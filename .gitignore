@@ -1,0 +1,33 @@
+# Environment
+.env
+venv/
+env/
+*.pyc
+__pycache__/
+
+# Data
+data/
+documents/
+*.pdf
+*.docx
+*.txt
+
+# Vector stores
+*.faiss
+*.pkl
+chroma_db/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+

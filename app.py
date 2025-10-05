@@ -264,6 +264,98 @@ def main():
         - ✅ Document upload
         - ✅ Offline capable
         """)
+        
+        st.subheader("🔧 Technical Details")
+        
+        # Embedding Model Info
+        with st.expander("🧠 Embedding Model", expanded=False):
+            st.markdown("""
+            **Model:** `sentence-transformers/all-MiniLM-L6-v2`
+            
+            **Type:** HuggingFace Sentence Transformer
+            
+            **Details:**
+            - Fast and efficient embeddings
+            - 384-dimensional vectors
+            - Runs locally on CPU
+            - Normalized embeddings for better similarity
+            
+            **Why this model?**
+            - Excellent balance of speed and accuracy
+            - Small model size (~90MB)
+            - Optimized for semantic search
+            """)
+        
+        # Vector Database Info
+        with st.expander("🗄️ Vector Database", expanded=False):
+            st.markdown("""
+            **Database:** ChromaDB
+            
+            **Storage:** Local persistence in `./data/vectorstore`
+            
+            **Search Method:** Cosine similarity
+            
+            **Features:**
+            - Fast vector similarity search
+            - Metadata filtering support
+            - Persistent storage
+            - Efficient indexing with HNSW algorithm
+            
+            **Performance:**
+            - Sub-millisecond retrieval
+            - Scales to millions of vectors
+            """)
+        
+        # Data Processing Info
+        with st.expander("📊 Data Processing Pipeline", expanded=False):
+            st.markdown("""
+            **1. Document Loading**
+            - Supports: PDF, TXT, DOCX
+            - Preserves document metadata
+            
+            **2. Text Chunking**
+            - **Strategy:** RecursiveCharacterTextSplitter
+            - **Chunk Size:** 1,000 characters
+            - **Overlap:** 200 characters
+            - **Separators:** Paragraphs → Sentences → Words
+            
+            **3. Embedding Generation**
+            - Each chunk converted to vector
+            - Normalized for similarity search
+            
+            **4. Vector Storage**
+            - Stored in ChromaDB with metadata
+            - Indexed for fast retrieval
+            
+            **5. Query Processing**
+            - Query → Embedding → Similarity Search
+            - Top-5 most relevant chunks retrieved
+            - Context provided to answer questions
+            """)
+        
+        # Configuration Info
+        with st.expander("⚙️ Current Configuration", expanded=False):
+            try:
+                stats = st.session_state.rag.get_stats()
+                st.markdown(f"""
+                **System Configuration:**
+                - 📦 Chunks: {stats.get('num_documents', 0)}
+                - 🔢 Chunk Size: {stats.get('chunk_size', 0)} chars
+                - 🔄 Overlap: {stats.get('chunk_overlap', 0)} chars
+                - 🧠 Model: `{stats.get('embedding_model', 'N/A')}`
+                - 🗄️ Vector Store: {stats.get('vector_store_type', 'N/A').upper()}
+                - 🔍 Top-K Retrieval: 5 documents
+                - 🎯 Hybrid Search: {'✅ Enabled' if stats.get('hybrid_search_enabled') else '❌ Disabled'}
+                - 📊 Reranking: {'✅ Enabled' if stats.get('reranking_enabled') else '❌ Disabled'}
+                """)
+            except:
+                st.markdown("""
+                **System Configuration:**
+                - Chunk Size: 1,000 characters
+                - Overlap: 200 characters
+                - Model: all-MiniLM-L6-v2
+                - Vector Store: ChromaDB
+                """)
 
 
 def process_uploaded_files(uploaded_files):

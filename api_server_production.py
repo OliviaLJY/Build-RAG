@@ -295,6 +295,7 @@ async def startup_event():
             top_k_retrieval=5,
             use_hybrid_search=False,
             use_reranking=False,
+            use_contextual_compression=False,  # Disable compression for now
             collection_name='production_rag_documents'
         )
         

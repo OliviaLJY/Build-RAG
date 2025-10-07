@@ -23,7 +23,7 @@ what each method should do, then implement the logic yourself.
 """
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import hashlib
 import secrets
@@ -109,7 +109,9 @@ class APIKeyManager:
         2. Call self._init_database() to set up tables
         """
         # TODO: Implement initialization
-        pass
+        self.db_path = db_path
+        self._init_database()
+    
     
     def _init_database(self) -> None:
         """
@@ -148,10 +150,44 @@ class APIKeyManager:
         6. Commit and close connection
         """
         # TODO: Implement database setup
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_keys (
+                key_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                key_prefix TEXT NOT NULL,
+                key_hash TEXT NOT NULL UNIQUE,
+                user_id TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME,
+                is_active BOOLEAN DEFAULT 1,
+                rate_limit INTEGER DEFAULT 60,
+                usage_count INTEGER DEFAULT 0
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_key_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key_id INTEGER,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                endpoint TEXT,
+                success BOOLEAN
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_key_hash ON api_keys (key_hash)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_timestamp ON api_key_usage (timestamp)
+        """)
+        conn.commit()
+        conn.close()
         # HINT: Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         # HINT: conn = sqlite3.connect(self.db_path)
         # HINT: cursor.execute("CREATE TABLE IF NOT EXISTS ...")
-        pass
+   
     
     def generate_api_key(
         self,
@@ -207,9 +243,36 @@ class APIKeyManager:
         7. Return (raw_key, api_key_object)
         """
         # TODO: Implement key generation
+        full_key = f"rag_{secrets.token_hex(16)}"
+        key_prefix = full_key[:8]
+        key_hash = hashlib.sha256(full_key.encode()).hexdigest()
+        # Use UTC time to match SQLite CURRENT_TIMESTAMP
+        current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+        expires_at = current_time + timedelta(days=expires_in_days) if expires_in_days else None
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO api_keys (name, key_prefix, key_hash, user_id,
+            expires_at, rate_limit) VALUES (?, ?, ?, ?, ?, ?)
+        """, (name, key_prefix, key_hash, user_id, expires_at, rate_limit))
+        conn.commit()
+        conn.close()
+        api_key = APIKey(
+            key_id=cursor.lastrowid,
+            name=name,
+            key_prefix=key_prefix,
+            key_hash=key_hash,
+            user_id=user_id,
+            created_at=current_time,
+            expires_at=expires_at,
+            is_active=True,
+            rate_limit=rate_limit,
+            usage_count=0
+        )
+        return full_key, api_key
         # HINT: secrets.token_hex(16) generates secure random hex string
         # HINT: hashlib.sha256(string.encode()).hexdigest() for hashing
-        pass
+    
     
     def validate_api_key(self, api_key: str) -> APIKeyValidation:
         """
@@ -253,7 +316,30 @@ class APIKeyManager:
            - Return APIKeyValidation(is_valid=True, api_key=api_key_obj)
         """
         # TODO: Implement validation
-        pass
+        if not api_key.startswith("rag_"):
+            return APIKeyValidation(is_valid=False, error_message="Invalid key format")
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES)
+        conn.row_factory = sqlite3.Row           # <-- key line
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1", (key_hash,))
+        row = cursor.fetchone()
+        if not row:
+            return APIKeyValidation(is_valid=False, error_message="Invalid API key")
+        # Check expiration (use UTC time to match SQLite CURRENT_TIMESTAMP)
+        if row[6]:
+            expires_at = datetime.strptime(row[6], "%Y-%m-%d %H:%M:%S")
+            current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+            if expires_at < current_time:
+                return APIKeyValidation(is_valid=False, error_message="API key expired")
+        if not self._check_rate_limit(key_id=row[0], rate_limit=row[8]):
+            return APIKeyValidation(is_valid=False, error_message="Rate limit exceeded")
+        #api_key_obj = APIKey(**row) # row作为double-star关键字参数keyword arguments 传入 APIKey 类的构造函数
+        if not row:
+            return None
+        row_dict = dict(row)           # Row -> dict
+        api_key_obj = APIKey(**row_dict)
+        return APIKeyValidation(is_valid=True, api_key=api_key_obj)
     
     def _check_rate_limit(self, key_id: int, rate_limit: int) -> bool:
         """
@@ -284,8 +370,19 @@ class APIKeyManager:
            - Else: return True (within limit)
         """
         # TODO: Implement rate limit check
+        # notice: The core problem was that SQLite's CURRENT_TIMESTAMP stores timestamps in UTC, but Python's datetime.now() returns local time.
+        # Use UTC time since SQLite CURRENT_TIMESTAMP is in UTC
+        one_minute_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
+        # Convert datetime to string format for SQLite comparison
+        one_minute_ago_str = one_minute_ago.strftime("%Y-%m-%d %H:%M:%S")
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("select COUNT(*) from api_key_usage where key_id = ? and timestamp > ?", (key_id, one_minute_ago_str))
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count < rate_limit
+        
         # HINT: Use datetime.now() - timedelta(minutes=1) for time window
-        pass
     
     def record_usage(
         self,
@@ -320,7 +417,14 @@ class APIKeyManager:
         3. Commit changes
         """
         # TODO: Implement usage recording
-        pass
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO api_key_usage (key_id, endpoint, success) VALUES (?, ?, ?)", (api_key.key_id, endpoint, success))
+        cursor.execute("UPDATE api_keys SET usage_count = usage_count + 1 WHERE key_id = ?", (api_key.key_id,))
+        conn.commit()
+        conn.close()
+
+
     
     def revoke_api_key(self, key_id: int) -> bool:
         """
@@ -347,7 +451,16 @@ class APIKeyManager:
            - Else: return False (key not found)
         """
         # TODO: Implement revocation
-        pass
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE api_keys SET is_active = 0 WHERE key_id = ?", (key_id,))
+        #result = cursor.rowcount > 0
+       
+        conn.commit()
+        conn.close()
+        return cursor.rowcount > 0
+
+
     
     def get_user_keys(self, user_id: str) -> List[APIKey]:
         """
@@ -374,7 +487,14 @@ class APIKeyManager:
         3. Return list of APIKey objects
         """
         # TODO: Implement key listing
-        pass
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM api_keys WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        api_keys = [APIKey(**row) for row in rows]
+        conn.close()
+        return api_keys
+        
     
     def get_usage_stats(self, key_id: int) -> Dict[str, Any]:
         """
@@ -416,7 +536,25 @@ class APIKeyManager:
         6. Return dictionary with all stats
         """
         # TODO: Implement statistics
-        pass
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM api_key_usage WHERE key_id = ?", (key_id,))
+        total = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM api_key_usage WHERE key_id = ? AND success = 1", (key_id,))
+        success = cursor.fetchone()[0]
+        success_rate = (success / total * 100) if total > 0 else 0
+        cursor.execute("SELECT endpoint, COUNT(*) as count FROM api_key_usage WHERE key_id = ? GROUP BY endpoint", (key_id,))
+        requests_by_endpoint = cursor.fetchall()
+        cursor.execute("SELECT COUNT(*) FROM api_key_usage WHERE key_id = ? AND timestamp > datetime('now', '-1 day')", (key_id,))
+        recent_activity = cursor.fetchone()[0]
+        conn.close()
+        return {
+            "total_requests": total,
+            "successful_requests": success,
+            "success_rate": success_rate,
+            "requests_by_endpoint": requests_by_endpoint,
+            "recent_activity": recent_activity
+        }
 
 
 # ============================================================================
@@ -546,6 +684,6 @@ def test_api_key_manager():
 
 
 # UNCOMMENT THIS TO TEST YOUR IMPLEMENTATION:
-# if __name__ == "__main__":
-#     test_api_key_manager()
+if __name__ == "__main__":
+    test_api_key_manager()
 

@@ -2,7 +2,7 @@
 
 A production-ready Retrieval-Augmented Generation (RAG) system with state-of-the-art algorithms for document ingestion, semantic search, and intelligent question answering.
 
-![Uploading image.png…]()
+<img width="2064" height="1560" alt="image" src="https://github.com/user-attachments/assets/47b821ba-9259-4094-897a-5b8d57d9f41c" />
 
 
 ## 🎯 Features

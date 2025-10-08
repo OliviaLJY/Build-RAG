@@ -328,7 +328,11 @@ class APIKeyManager:
             return APIKeyValidation(is_valid=False, error_message="Invalid API key")
         # Check expiration (use UTC time to match SQLite CURRENT_TIMESTAMP)
         if row[6]:
-            expires_at = datetime.strptime(row[6], "%Y-%m-%d %H:%M:%S")
+            # Handle both datetime formats (with and without microseconds)
+            try:
+                expires_at = datetime.strptime(row[6], "%Y-%m-%d %H:%M:%S.%f")
+            except ValueError:
+                expires_at = datetime.strptime(row[6], "%Y-%m-%d %H:%M:%S")
             current_time = datetime.now(timezone.utc).replace(tzinfo=None)
             if expires_at < current_time:
                 return APIKeyValidation(is_valid=False, error_message="API key expired")

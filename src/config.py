@@ -5,6 +5,10 @@ Configuration management for RAG system
 import os
 from typing import Optional
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class RAGConfig(BaseModel):
@@ -14,16 +18,16 @@ class RAGConfig(BaseModel):
     openai_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
     cohere_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("COHERE_API_KEY"))
     
-    # Model Configuration
+    # Model Configuration - Enhanced with OpenAI models for better intelligence
     embedding_model: str = Field(
-        default="sentence-transformers/all-mpnet-base-v2",
+        default="text-embedding-3-large",  # Upgraded to OpenAI embeddings for better semantic understanding
         description="Model for generating embeddings"
     )
     llm_model: str = Field(
-        default="gpt-3.5-turbo",
+        default="gpt-4o",  # Upgraded to GPT-4o - latest and most intelligent model
         description="Language model for generation"
     )
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)  # Lower temperature for more focused, accurate responses
     
     # Vector Store Configuration
     vector_store_type: str = Field(default="chromadb", description="Type of vector store")
@@ -42,7 +46,7 @@ class RAGConfig(BaseModel):
     
     # Advanced Options
     use_contextual_compression: bool = Field(default=True)
-    max_tokens: int = Field(default=2000)
+    max_tokens: int = Field(default=4000)  # Increased for more detailed, intelligent responses
     
     class Config:
         env_file = ".env"

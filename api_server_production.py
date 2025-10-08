@@ -286,16 +286,19 @@ async def startup_event():
         logger.error(f"Error initializing Query Cache: {e}")
         raise
     
-    # Initialize RAG pipeline
+    # Initialize RAG pipeline with intelligent configuration
     try:
         config = RAGConfig(
             chunk_size=1000,
             chunk_overlap=200,
-            embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+            embedding_model="text-embedding-3-large",  # OpenAI embeddings for better semantic understanding
+            llm_model="gpt-4o",  # GPT-4o for most intelligent responses
+            temperature=0.3,  # Lower temperature for more accurate, focused answers
             top_k_retrieval=5,
-            use_hybrid_search=False,
-            use_reranking=False,
-            use_contextual_compression=False,  # Disable compression for now
+            use_hybrid_search=True,  # Enable hybrid search for better retrieval
+            use_reranking=False,  # Disable reranking unless Cohere API key is available
+            use_contextual_compression=True,  # Enable compression for better context
+            max_tokens=4000,  # Increased for detailed responses
             collection_name='production_rag_documents'
         )
         
@@ -454,16 +457,34 @@ async def query_rag(
             # Cache miss - query RAG pipeline
             logger.info(f"Cache MISS for user {api_key.user_id}")
             
-            documents = rag_pipeline.retrieve(request.question)
+            # Option 1: Simple (current) - just return document text
+            if False:  # Change to True to use this mode
+                documents = rag_pipeline.retrieve(request.question)
+                if not documents:
+                    answer = "I couldn't find relevant information to answer your question."
+                    sources = []
+                else:
+                    answer = f"Based on the documents: {documents[0].page_content}"
+                    sources = [doc.page_content[:200] + "..." for doc in documents[:3]]
             
-            if not documents:
-                answer = "I couldn't find relevant information to answer your question."
-                sources = []
+            # Option 2: Full RAG with LLM (requires OpenAI API key)
             else:
-                # For production, you'd use the full query() method with LLM
-                # Here's a simplified version:
-                answer = f"Based on the documents: {documents[0].page_content}"
-                sources = [doc.page_content[:200] + "..." for doc in documents[:3]]
+                try:
+                    result = rag_pipeline.query(
+                        request.question,
+                        return_source_documents=True
+                    )
+                    answer = result['answer']
+                    sources = [doc.page_content[:200] + "..." for doc in result.get('source_documents', [])[:3]]
+                except Exception as e:
+                    logger.error(f"LLM query failed: {e}, falling back to simple retrieval")
+                    documents = rag_pipeline.retrieve(request.question)
+                    if not documents:
+                        answer = "I couldn't find relevant information to answer your question."
+                        sources = []
+                    else:
+                        answer = f"Based on the documents: {documents[0].page_content}"
+                        sources = [doc.page_content[:200] + "..." for doc in documents[:3]]
             
             # Store in cache if enabled
             if request.use_cache and query_cache:

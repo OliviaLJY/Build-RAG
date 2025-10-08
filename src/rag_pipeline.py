@@ -194,17 +194,23 @@ class RAGPipeline:
                 max_tokens=self.config.max_tokens
             )
             
-            # Create custom prompt
-            prompt_template = """Use the following pieces of context to answer the question at the end.
-If you don't know the answer, just say that you don't know, don't try to make up an answer.
-Use three sentences maximum and keep the answer as concise as possible.
+            # Create enhanced intelligent prompt
+            prompt_template = """You are an intelligent AI assistant with access to a knowledge base. Your task is to provide accurate, insightful, and well-reasoned answers based on the context provided.
 
-Context:
+Context Information:
 {context}
 
 Question: {question}
 
-Helpful Answer:"""
+Instructions:
+1. Analyze the context carefully and extract the most relevant information
+2. Provide a comprehensive yet concise answer that directly addresses the question
+3. Use clear reasoning and connect related concepts when appropriate
+4. If the context doesn't contain enough information, acknowledge this and provide what you can based on available information
+5. Be precise with technical terms and explanations
+6. When relevant, provide examples or clarifications to enhance understanding
+
+Intelligent Answer:"""
             
             prompt = PromptTemplate(
                 template=prompt_template,

@@ -8,9 +8,9 @@ import logging
 from langchain.docstore.document import Document
 from langchain.retrievers import (
     ContextualCompressionRetriever,
-    EnsembleRetriever,
-    BM25Retriever
+    EnsembleRetriever
 )
+from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers.document_compressors import (
     LLMChainExtractor,
     EmbeddingsFilter

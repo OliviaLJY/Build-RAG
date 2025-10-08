@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Intelligent RAG - Quick Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+
+        .status {
+            background: #10b981;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .key-section {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+
+        .key-label {
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .api-key {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            word-break: break-all;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .instructions {
+            margin-bottom: 25px;
+        }
+
+        .instructions h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .step {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .features {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .features h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .features ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .features li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .alert {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #92400e;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            🧠 Intelligent RAG System
+        </h1>
+        <p class="subtitle">Powered by GPT-4o & OpenAI Embeddings</p>
+
+        <div class="status">
+            <span>✅</span>
+            <span>Server Running on http://localhost:8000</span>
+        </div>
+
+        <div class="features">
+            <h3>🚀 Intelligence Upgrades Active:</h3>
+            <ul>
+                <li>GPT-4o - Latest & Most Intelligent Model</li>
+                <li>OpenAI Embeddings (text-embedding-3-large)</li>
+                <li>Enhanced AI Prompts for Better Reasoning</li>
+                <li>Hybrid Search & Contextual Compression</li>
+                <li>87 Document Chunks Loaded</li>
+            </ul>
+        </div>
+
+        <div class="key-section">
+            <div class="key-label">🔑 Your API Key:</div>
+            <div class="alert">
+                ⚠️ Copy this key now! You'll need it for the frontend.
+            </div>
+            <div class="api-key" id="apiKey">rag_b2ffc4032313c251d1407b65cfe74476</div>
+            <button class="copy-btn" onclick="copyApiKey()">📋 Copy API Key</button>
+        </div>
+
+        <div class="instructions">
+            <h2>📖 How to Use:</h2>
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Open the Frontend Dashboard</strong> - Click the button below
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Enter API Key</strong> - Paste the key from above
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Ask Questions</strong> - Try asking about RAG, neural networks, or machine learning!
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="frontend.html" class="btn btn-primary" target="_blank">
+                🚀 Open Frontend Dashboard
+            </a>
+            <a href="http://localhost:8000/docs" class="btn btn-secondary" target="_blank">
+                📚 View API Docs
+            </a>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f3f4f6; border-radius: 10px;">
+            <strong style="color: #374151;">💡 Example Questions to Try:</strong>
+            <ul style="margin-top: 10px; color: #6b7280; line-height: 1.8;">
+                <li>What is RAG and how does it work?</li>
+                <li>Explain the architecture of neural networks</li>
+                <li>What are the differences between supervised and unsupervised learning?</li>
+                <li>How does backpropagation work in neural networks?</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function copyApiKey() {
+            const apiKey = document.getElementById('apiKey').textContent;
+            navigator.clipboard.writeText(apiKey).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#667eea';
+                }, 2000);
+            });
+        }
+
+        // Auto-check server status
+        fetch('http://localhost:8000/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Server Status:', data);
+            })
+            .catch(error => {
+                console.warn('Server check:', error);
+            });
+    </script>
+</body>
+</html>
+

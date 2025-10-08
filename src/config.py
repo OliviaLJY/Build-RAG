@@ -47,6 +47,10 @@ class RAGConfig(BaseModel):
     # Advanced Options
     use_contextual_compression: bool = Field(default=True)
     max_tokens: int = Field(default=4000)  # Increased for more detailed, intelligent responses
+    allow_general_knowledge: bool = Field(
+        default=True,  # Allow GPT-4o to answer even without documents
+        description="Allow answering from GPT-4o's training when no documents found"
+    )
     
     class Config:
         env_file = ".env"

@@ -180,19 +180,51 @@ class RAGPipeline:
             # Retrieve relevant documents
             documents = self.retrieve(question)
             
-            if not documents:
-                return {
-                    "answer": "I couldn't find any relevant information to answer your question.",
-                    "source_documents": []
-                }
-            
-            # Initialize LLM
+            # Initialize LLM (needed for both document-based and general knowledge answers)
             llm = ChatOpenAI(
                 model_name=self.config.llm_model,
                 temperature=self.config.temperature,
                 openai_api_key=self.config.openai_api_key,
                 max_tokens=self.config.max_tokens
             )
+            
+            # Handle case when no documents are found
+            if not documents:
+                if self.config.allow_general_knowledge:
+                    # Answer from GPT-4o's general knowledge with disclaimer
+                    logger.info("No documents found, using GPT-4o's general knowledge")
+                    
+                    general_prompt = f"""You are a knowledgeable AI assistant. Answer the following question accurately and helpfully based on your training knowledge.
+
+Note: No relevant documents were found in the knowledge base, so please answer from your general knowledge.
+
+Question: {question}
+
+Please provide a comprehensive and accurate answer.
+
+Answer:"""
+                    
+                    try:
+                        answer = llm.predict(general_prompt)
+                        return {
+                            "answer": f"ℹ️ **Note:** No relevant documents found in knowledge base. Answer based on general AI knowledge:\n\n{answer}",
+                            "source_documents": [],
+                            "knowledge_source": "general_knowledge"
+                        }
+                    except Exception as e:
+                        logger.error(f"Error generating general knowledge answer: {e}")
+                        return {
+                            "answer": "I couldn't find relevant information in the knowledge base and encountered an error accessing general knowledge.",
+                            "source_documents": []
+                        }
+                else:
+                    # Strict mode: only answer from documents
+                    logger.info("No documents found, strict mode enabled")
+                    return {
+                        "answer": "I couldn't find any relevant information to answer your question in the knowledge base.",
+                        "source_documents": [],
+                        "knowledge_source": "none"
+                    }
             
             # Create enhanced intelligent prompt
             prompt_template = """You are an intelligent AI assistant with access to a knowledge base. Your task is to provide accurate, insightful, and well-reasoned answers based on the context provided.

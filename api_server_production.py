@@ -299,6 +299,7 @@ async def startup_event():
             use_reranking=False,  # Disable reranking unless Cohere API key is available
             use_contextual_compression=True,  # Enable compression for better context
             max_tokens=4000,  # Increased for detailed responses
+            allow_general_knowledge=True,  # Allow GPT-4o to answer from general knowledge
             collection_name='production_rag_documents'
         )
         

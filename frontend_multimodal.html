@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Multimodal RAG System - Vision + Text</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8b5cf6;
+            --primary-dark: #7c3aed;
+            --secondary: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --gradient: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 50%, #10b981 100%);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gradient);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 12px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .header .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .header .tech-badges {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tech-badge {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 6px 16px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 1400px) {
+            .grid {
+                grid-template-columns: 1fr 2fr;
+            }
+            .grid .stats-column {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 968px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 70px rgba(139, 92, 246, 0.3);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .image-upload-zone {
+            border: 3px dashed var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-upload-zone:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            transform: scale(1.02);
+        }
+
+        .image-upload-zone.has-image {
+            border-color: var(--success);
+            background: white;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin-top: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--dark);
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            background: white;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 25px rgba(139, 92, 246, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .status-item {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .status-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .status-item .label {
+            font-size: 0.85em;
+            color: #64748b;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .status-item .value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .visualization-container {
+            margin-top: 25px;
+            padding: 20px;
+            background: white;
+            border-radius: 16px;
+            min-height: 400px;
+        }
+
+        .response-box {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            margin-top: 25px;
+            min-height: 150px;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .response-content {
+            color: var(--dark);
+            line-height: 1.8;
+            font-size: 1em;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .badge.info {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+        }
+
+        .badge.multimodal {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid var(--light);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert.info {
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            border-left: 4px solid #0ea5e9;
+            color: #075985;
+        }
+
+        .alert.success {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+
+        .alert.warning {
+            background: linear-gradient(135deg, #fed7aa, #fdba74);
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #f1f5f9;
+            padding: 8px;
+            border-radius: 12px;
+        }
+
+        .mode-button {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid transparent;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .mode-button.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-analysis-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .embedding-viz {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .embedding-viz h4 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .embedding-vector {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.8em;
+            color: #475569;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Multimodal RAG System</h1>
+            <p class="subtitle">Vision + Text Intelligence with GPT-4o & CLIP</p>
+            <div class="tech-badges">
+                <span class="tech-badge">🤖 GPT-4o Vision</span>
+                <span class="tech-badge">🖼️ CLIP Embeddings</span>
+                <span class="tech-badge">💬 Text + Image</span>
+                <span class="tech-badge">📊 Visualizations</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Left Column: Configuration & Upload -->
+            <div>
+                <div class="card">
+                    <h2><span>🔑</span>API Key</h2>
+                    <div class="form-group">
+                        <input type="password" id="api-key" placeholder="Enter your API key..." />
+                    </div>
+                    <button class="btn-secondary" onclick="testConnection()" style="width: 100%;">
+                        <span>🔌</span> Test Connection
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2><span>🖼️</span>Image Upload</h2>
+                    <div class="image-upload-zone" id="upload-zone" onclick="document.getElementById('image-input').click()">
+                        <div id="upload-placeholder">
+                            <div style="font-size: 3em; margin-bottom: 10px;">📸</div>
+                            <p style="font-weight: 600; color: var(--dark);">Click or drag to upload image</p>
+                            <p style="font-size: 0.9em; color: #64748b; margin-top: 5px;">Supports: JPG, PNG, WebP</p>
+                        </div>
+                        <img id="image-preview" class="image-preview" style="display: none;" />
+                    </div>
+                    <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)" />
+                    <button class="btn-secondary" onclick="clearImage()" style="width: 100%; margin-top: 15px;">
+                        <span>🔄</span> Clear Image
+                    </button>
+                    
+                    <button class="btn-success" onclick="analyzeImage()" style="width: 100%; margin-top: 10px;">
+                        <span>🔍</span> Analyze Image Only
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2><span>⚡</span>System Status</h2>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <div class="label">Status</div>
+                            <div class="value" id="system-status">●</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">Mode</div>
+                            <div class="value" id="current-mode">💬</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">Queries</div>
+                            <div class="value" id="query-count">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Column: Query Interface -->
+            <div>
+                <div class="card">
+                    <h2><span>💬</span>Multimodal Query</h2>
+                    
+                    <div class="mode-selector">
+                        <div class="mode-button active" id="mode-text" onclick="setMode('text')">
+                            💬 Text Only
+                        </div>
+                        <div class="mode-button" id="mode-multimodal" onclick="setMode('multimodal')">
+                            🎨 Text + Image
+                        </div>
+                        <div class="mode-button" id="mode-vision" onclick="setMode('vision')">
+                            🖼️ Image Only
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="question">Your Question</label>
+                        <textarea 
+                            id="question" 
+                            placeholder="Ask about text, images, or both... Upload an image to use vision capabilities."
+                        ></textarea>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="submitQuery()">
+                            <span>🚀</span> Submit Query
+                        </button>
+                        <button class="btn-secondary" onclick="clearResults()">
+                            <span>🔄</span> Clear
+                        </button>
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <div style="color: var(--primary); font-weight: 600;">
+                            <span id="loading-text">Processing your multimodal query...</span>
+                        </div>
+                    </div>
+
+                    <div id="response-container"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Visualizations -->
+            <div class="stats-column">
+                <div class="card">
+                    <h2><span>📊</span>Visualizations</h2>
+                    <div class="visualization-container" id="viz-container">
+                        <div style="text-align: center; color: #94a3b8; padding: 60px 20px;">
+                            <div style="font-size: 3em; margin-bottom: 15px;">📈</div>
+                            <p style="font-weight: 600;">Submit a query to see visualizations</p>
+                            <p style="font-size: 0.9em; margin-top: 8px;">Embeddings, similarity scores, and more</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2><span>💡</span>Quick Examples</h2>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn-secondary" onclick="setExample('What is machine learning?')" style="width: 100%;">
+                            📚 Text Query
+                        </button>
+                        <button class="btn-secondary" onclick="setExample('Describe this image in detail')" style="width: 100%;">
+                            🖼️ Vision Query
+                        </button>
+                        <button class="btn-secondary" onclick="setExample('How does this image relate to neural networks?')" style="width: 100%;">
+                            🎨 Multimodal Query
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let currentMode = 'text';
+        let queryCount = 0;
+        let uploadedImage = null;
+        let uploadedImageData = null;
+
+        // Mode management
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            
+            const modeEmoji = {
+                'text': '💬',
+                'multimodal': '🎨',
+                'vision': '🖼️'
+            };
+            document.getElementById('current-mode').textContent = modeEmoji[mode];
+        }
+
+        // Image upload handling
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImageData = e.target.result;
+                const preview = document.getElementById('image-preview');
+                preview.src = uploadedImageData;
+                preview.style.display = 'block';
+                document.getElementById('upload-placeholder').style.display = 'none';
+                document.getElementById('upload-zone').classList.add('has-image');
+                
+                showAlert('✅ Image uploaded successfully!', 'success');
+            };
+            reader.readAsDataURL(file);
+            uploadedImage = file;
+        }
+
+        function clearImage() {
+            uploadedImage = null;
+            uploadedImageData = null;
+            document.getElementById('image-preview').style.display = 'none';
+            document.getElementById('upload-placeholder').style.display = 'block';
+            document.getElementById('upload-zone').classList.remove('has-image');
+            document.getElementById('image-input').value = '';
+        }
+
+        // Image analysis
+        async function analyzeImage() {
+            if (!uploadedImage) {
+                showAlert('⚠️ Please upload an image first', 'warning');
+                return;
+            }
+
+            const apiKey = document.getElementById('api-key').value;
+            if (!apiKey) {
+                showAlert('⚠️ Please enter your API key first', 'warning');
+                return;
+            }
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('loading-text').textContent = 'Analyzing image with GPT-4o Vision...';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', uploadedImage);
+
+                const response = await fetch(`${API_URL}/api/multimodal/analyze-image`, {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': apiKey
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayImageAnalysis(data);
+                } else {
+                    showAlert(`❌ Error: ${data.detail}`, 'warning');
+                }
+            } catch (error) {
+                showAlert(`❌ Request failed: ${error.message}`, 'warning');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        function displayImageAnalysis(data) {
+            const container = document.getElementById('response-container');
+            
+            let html = `
+                <div class="image-analysis-box">
+                    <h3 style="color: var(--primary); margin-bottom: 15px;">
+                        🔍 Image Analysis
+                    </h3>
+                    <div style="line-height: 1.8;">
+                        ${data.analysis}
+                    </div>
+            `;
+
+            if (data.embedding) {
+                html += `
+                    <div class="embedding-viz">
+                        <h4>📊 CLIP Embedding (${data.embedding_dimension}D)</h4>
+                        <div class="embedding-vector">
+                            ${data.embedding.slice(0, 20).map((v, i) => 
+                                `<span style="color: ${v > 0 ? '#10b981' : '#ef4444'};">${v.toFixed(4)}</span>`
+                            ).join(', ')}...
+                        </div>
+                        <p style="font-size: 0.85em; color: #64748b; margin-top: 8px;">
+                            This embedding represents the image in a ${data.embedding_dimension}-dimensional vector space
+                        </p>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Visualize embedding if available
+            if (data.embedding) {
+                visualizeEmbedding(data.embedding.slice(0, 50));
+            }
+        }
+
+        // Query submission
+        async function submitQuery() {
+            const apiKey = document.getElementById('api-key').value;
+            const question = document.getElementById('question').value;
+
+            if (!apiKey) {
+                showAlert('⚠️ Please enter your API key first', 'warning');
+                return;
+            }
+
+            if (currentMode === 'text' && !question.trim()) {
+                showAlert('⚠️ Please enter a question', 'warning');
+                return;
+            }
+
+            if ((currentMode === 'multimodal' || currentMode === 'vision') && !uploadedImage) {
+                showAlert('⚠️ Please upload an image for this mode', 'warning');
+                return;
+            }
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('loading-text').textContent = 
+                currentMode === 'text' ? 'Processing text query...' : 'Processing multimodal query with vision...';
+            document.getElementById('response-container').innerHTML = '';
+
+            const startTime = Date.now();
+
+            try {
+                let response;
+                
+                if (currentMode === 'text') {
+                    // Standard text query
+                    response = await fetch(`${API_URL}/api/query`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': apiKey
+                        },
+                        body: JSON.stringify({
+                            question: question,
+                            return_sources: true
+                        })
+                    });
+                } else {
+                    // Multimodal query
+                    const formData = new FormData();
+                    formData.append('image', uploadedImage);
+                    if (currentMode === 'multimodal') {
+                        formData.append('query_text', question);
+                    }
+
+                    response = await fetch(`${API_URL}/api/multimodal/query`, {
+                        method: 'POST',
+                        headers: {
+                            'X-API-Key': apiKey
+                        },
+                        body: formData
+                    });
+                }
+
+                const data = await response.json();
+                const responseTime = Date.now() - startTime;
+
+                if (response.ok) {
+                    displayResponse(data, responseTime);
+                    queryCount++;
+                    document.getElementById('query-count').textContent = queryCount;
+                } else {
+                    showAlert(`❌ Error: ${data.detail}`, 'warning');
+                }
+            } catch (error) {
+                showAlert(`❌ Request failed: ${error.message}`, 'warning');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        function displayResponse(data, responseTime) {
+            const container = document.getElementById('response-container');
+            
+            const badgeClass = data.multimodal ? 'multimodal' : 'info';
+            const badgeText = data.multimodal ? 'Multimodal' : 'Text Only';
+
+            let html = `
+                <div class="response-box">
+                    <div class="response-header">
+                        <h3>💡 Answer</h3>
+                        <span class="badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                    <div class="response-content">${formatAnswer(data.answer)}</div>
+                    
+                    <div style="display: flex; gap: 15px; margin-top: 15px; font-size: 0.9em; color: #64748b;">
+                        <div>⏱️ <strong>${responseTime}ms</strong></div>
+                        <div>🎨 <strong>${data.multimodal ? 'Vision Enabled' : 'Text Only'}</strong></div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+
+            // Create visualization
+            createResponseVisualization(data);
+        }
+
+        function createResponseVisualization(data) {
+            const vizContainer = document.getElementById('viz-container');
+            
+            // Simple bar chart showing response characteristics
+            const trace = {
+                x: ['Text Length', 'Processing Time', 'Confidence'],
+                y: [
+                    Math.min(data.answer.length / 10, 100),
+                    50, // Normalized
+                    data.multimodal ? 90 : 85
+                ],
+                type: 'bar',
+                marker: {
+                    color: ['#8b5cf6', '#06b6d4', '#10b981'],
+                    line: {
+                        color: '#fff',
+                        width: 2
+                    }
+                }
+            };
+
+            const layout = {
+                title: 'Response Metrics',
+                yaxis: { title: 'Score' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter', size: 12 },
+                margin: { t: 40, b: 40, l: 50, r: 20 }
+            };
+
+            Plotly.newPlot('viz-container', [trace], layout, {responsive: true});
+        }
+
+        function visualizeEmbedding(embedding) {
+            const vizContainer = document.getElementById('viz-container');
+            
+            const trace = {
+                y: embedding,
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: {
+                    color: embedding.map(v => v > 0 ? '#10b981' : '#ef4444'),
+                    size: 8
+                },
+                line: {
+                    color: '#8b5cf6',
+                    width: 2
+                }
+            };
+
+            const layout = {
+                title: 'Embedding Vector Visualization (First 50 dimensions)',
+                xaxis: { title: 'Dimension' },
+                yaxis: { title: 'Value' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter', size: 12 },
+                margin: { t: 40, b: 40, l: 50, r: 20 }
+            };
+
+            Plotly.newPlot('viz-container', [trace], layout, {responsive: true});
+        }
+
+        function formatAnswer(answer) {
+            answer = answer.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            answer = answer.replace(/\n/g, '<br>');
+            return answer;
+        }
+
+        function setExample(text) {
+            document.getElementById('question').value = text;
+        }
+
+        function clearResults() {
+            document.getElementById('question').value = '';
+            document.getElementById('response-container').innerHTML = '';
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('response-container');
+            container.innerHTML = `
+                <div class="alert ${type}">
+                    <span style="font-size: 1.5em;">
+                        ${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}
+                    </span>
+                    <div>${message}</div>
+                </div>
+            `;
+        }
+
+        async function testConnection() {
+            const apiKey = document.getElementById('api-key').value;
+            
+            if (!apiKey) {
+                showAlert('Please enter your API key', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/health`, {
+                    headers: {
+                        'X-API-Key': apiKey
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showAlert(`✅ Connected! System is ${data.status}`, 'success');
+                    document.getElementById('system-status').textContent = '🟢';
+                    document.getElementById('system-status').style.color = '#10b981';
+                } else {
+                    showAlert('❌ Connection failed', 'warning');
+                    document.getElementById('system-status').textContent = '🔴';
+                    document.getElementById('system-status').style.color = '#ef4444';
+                }
+            } catch (error) {
+                showAlert('❌ Server not responding', 'warning');
+                document.getElementById('system-status').textContent = '🔴';
+                document.getElementById('system-status').style.color = '#ef4444';
+            }
+        }
+
+        // Enable Enter key for submission
+        document.getElementById('question').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitQuery();
+            }
+        });
+
+        // Drag and drop support
+        const uploadZone = document.getElementById('upload-zone');
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.style.borderColor = 'var(--primary)';
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.style.borderColor = 'var(--border)';
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.style.borderColor = 'var(--border)';
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const input = document.getElementById('image-input');
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                input.files = dataTransfer.files;
+                handleImageUpload({ target: input });
+            }
+        });
+
+        // Load system status
+        window.addEventListener('DOMContentLoaded', testConnection);
+    </script>
+</body>
+</html>
+

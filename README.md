@@ -14,6 +14,13 @@
 
 Your RAG system now understands **both text and images**!
 
+<img width="3278" height="1560" alt="image" src="https://github.com/user-attachments/assets/29522df2-b8e1-490b-8123-30f04e22ce81" />
+
+<img width="3288" height="1550" alt="image" src="https://github.com/user-attachments/assets/ee57bdb3-ad95-48bc-a791-b76c7ac0bb8e" />
+
+
+
+
 ### ✨ What's New
 
 - 🤖 **GPT-4o Vision Integration** - Analyze and understand images with state-of-the-art AI
